@@ -11,6 +11,7 @@ from aiogram.types import Message, CallbackQuery, InputMediaPhoto, FSInputFile
 from aiogram.filters import CommandStart
 from .reminder_manager import start_reminders, stop_reminders
 
+
 from .core import (
     check_user_subscriptions,
     get_bot_data_for_worker,
@@ -126,6 +127,107 @@ def setup_handlers(router: Router, bot_id: int):
             except Exception as e:
                 logging.error(f"❌ Ошибка запуска напоминаний: {e}")
 
+    @router.callback_query(F.data == "check_subs")
+    async def check_subs_callback(callback: CallbackQuery):
+        """Обработчик кнопки 'Проверить подписки'"""
+        user_id = callback.from_user.id
+        
+        try:
+            # Отвечаем на callback сразу
+            await callback.answer("🔍 Проверяем подписки...", show_alert=False)
+            
+            # Проверяем подписки пользователя
+            not_subscribed_channels, channels_with_names = await check_user_subscriptions(user_id, bot_id)
+            
+            logging.info(f"🔍 Проверка подписок для пользователя {user_id}")
+            logging.info(f"❌ Не подписан на: {not_subscribed_channels}")
+            
+            if not channels_with_names:
+                await callback.message.answer("❌ Бот не настроен. Обратитесь к администратору.")
+                return
+            
+            # Получаем данные бота
+            bot_data = await get_bot_data_for_worker(bot_id)
+            if not bot_data:
+                await callback.message.answer("❌ Бот не найден в базе данных.")
+                return
+            
+            # Если пользователь подписан на все каналы
+            if not not_subscribed_channels:
+                # Останавливаем напоминания
+                await stop_reminders(bot_id, user_id)
+                
+                # Отправляем сообщение об успешной подписке
+                await send_subscription_success_message(callback.message, bot_data, user_id)
+                
+                # Пытаемся удалить старое сообщение с кнопками
+                try:
+                    await callback.message.delete()
+                except TelegramBadRequest as e:
+                    logging.warning(f"⚠️ Не удалось удалить сообщение: {e}")
+                
+                return
+            
+            # Если пользователь НЕ подписан на все каналы
+            bot_custom_message = bot_data[5] if bot_data[5] else ""  # message
+            image_filename = bot_data[9] if bot_data[9] else ""  # image_filename
+            
+            # Формируем сообщение
+            caption = get_image_caption(bot_custom_message, channels_with_names)
+            keyboard = create_subscription_keyboard(not_subscribed_channels, channels_with_names)
+            
+            # Обновляем сообщение с новыми данными
+            try:
+                # Если есть изображение, обновляем медиа
+                if image_filename:
+                    from main_bot.file_utils import get_bot_image_path
+                    import os
+                    
+                    image_path = get_bot_image_path(bot_id, image_filename)
+                    if os.path.exists(image_path):
+                        from aiogram.types import InputMediaPhoto, FSInputFile
+                        
+                        photo = FSInputFile(image_path)
+                        media = InputMediaPhoto(
+                            media=photo,
+                            caption=caption,
+                            parse_mode="HTML" if bot_custom_message else None
+                        )
+                        
+                        await callback.message.edit_media(
+                            media=media,
+                            reply_markup=keyboard
+                        )
+                    else:
+                        await callback.message.edit_text(
+                            caption,
+                            reply_markup=keyboard,
+                            disable_web_page_preview=True,
+                            parse_mode="HTML" if bot_custom_message else None
+                        )
+                else:
+                    await callback.message.edit_text(
+                        caption,
+                        reply_markup=keyboard,
+                        disable_web_page_preview=True,
+                        parse_mode="HTML" if bot_custom_message else None
+                    )
+                
+                # Запускаем/обновляем напоминания
+                await start_reminders(bot_id, user_id, callback.message.message_id)
+                
+                await callback.answer("❌ Вы не подписаны на все каналы!", show_alert=True)
+                
+            except TelegramBadRequest as e:
+                if "message is not modified" in str(e):
+                    await callback.answer("✅ Вы уже проверяли подписки", show_alert=False)
+                else:
+                    logging.error(f"❌ Ошибка обновления сообщения: {e}")
+                    await callback.answer("❌ Ошибка проверки подписок", show_alert=True)
+        
+        except Exception as e:
+            logging.error(f"❌ Ошибка в обработчике check_subs: {e}")
+            await callback.answer("❌ Ошибка проверки подписок", show_alert=True)
 
     @router.callback_query(F.data == "main_button")
     async def main_button_callback(callback: CallbackQuery):
