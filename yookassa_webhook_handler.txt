@@ -1,0 +1,126 @@
+# """
+# yookassa_webhook_handler.py
+# Обработчик вебхуков от YooKassa
+# """
+
+# import logging
+# import json
+# import sqlite3
+# from aiohttp import web
+# from yookassa.domain.notification import WebhookNotification
+
+# async def handle_yookassa_webhook(request):
+#     """Обработчик вебхуков от YooKassa"""
+#     try:
+#         # Получаем JSON данные
+#         body = await request.text()
+#         data = json.loads(body)
+        
+#         logging.info(f"📨 Получен вебхук от YooKassa: {data}")
+        
+#         # Создаем объект уведомления
+#         notification = WebhookNotification(data)
+        
+#         # Получаем объект платежа
+#         payment = notification.object
+        
+#         # Обрабатываем событие
+#         if notification.event == 'payment.succeeded':
+#             await handle_successful_payment(payment)
+#         elif notification.event == 'payment.canceled':
+#             await handle_canceled_payment(payment)
+#         elif notification.event == 'payment.waiting_for_capture':
+#             await handle_pending_payment(payment)
+        
+#         # Всегда возвращаем 200 OK
+#         return web.json_response({"status": "success"})
+        
+#     except Exception as e:
+#         logging.error(f"❌ Ошибка обработки вебхука YooKassa: {e}")
+#         return web.json_response({"status": "error"}, status=500)
+
+# async def handle_successful_payment(payment):
+#     """Обработка успешного платежа"""
+#     try:
+#         metadata = payment.metadata or {}
+#         payment_id = metadata.get('payment_id')
+#         user_id = metadata.get('user_id')
+#         amount = payment.amount.value if payment.amount else 0
+        
+#         if not payment_id:
+#             logging.error("❌ Не найден payment_id в метаданных платежа")
+#             return
+        
+#         logging.info(f"✅ Успешный платеж! Payment ID: {payment_id}, Сумма: {amount}")
+        
+#         # Обновляем статус в базе данных
+#         conn = sqlite3.connect('subscription_bot.db')
+#         cursor = conn.cursor()
+        
+#         cursor.execute('''
+#             UPDATE payments 
+#             SET status = 'completed', 
+#                 yoomoney_operation_id = ?,
+#                 completed_at = datetime('now')
+#             WHERE id = ?
+#         ''', (payment.id, payment_id))
+        
+#         # Получаем информацию о платеже
+#         cursor.execute('''
+#             SELECT user_id, bots_count FROM payments WHERE id = ?
+#         ''', (payment_id,))
+        
+#         result = cursor.fetchone()
+#         if result:
+#             user_id, bots_count = result
+            
+#             # Обновляем баланс пользователя
+#             cursor.execute('''
+#                 INSERT OR REPLACE INTO user_bots (user_id, available_bots, total_bots)
+#                 VALUES (?, 
+#                     COALESCE((SELECT available_bots FROM user_bots WHERE user_id = ?), 0) + ?,
+#                     COALESCE((SELECT total_bots FROM user_bots WHERE user_id = ?), 0) + ?
+#                 )
+#             ''', (user_id, user_id, bots_count, user_id, bots_count))
+            
+#             conn.commit()
+#             logging.info(f"💰 Пользователь {user_id} получил {bots_count} ботов")
+            
+#             # Отправляем уведомление в Telegram
+#             await send_telegram_notification(user_id, bots_count, amount)
+        
+#         conn.close()
+        
+#     except Exception as e:
+#         logging.error(f"❌ Ошибка обработки успешного платежа: {e}")
+
+# async def handle_canceled_payment(payment):
+#     """Обработка отмененного платежа"""
+#     try:
+#         metadata = payment.metadata or {}
+#         payment_id = metadata.get('payment_id')
+        
+#         if payment_id:
+#             conn = sqlite3.connect('subscription_bot.db')
+#             cursor = conn.cursor()
+            
+#             cursor.execute('''
+#                 UPDATE payments SET status = 'canceled' WHERE id = ?
+#             ''', (payment_id,))
+            
+#             conn.commit()
+#             conn.close()
+            
+#             logging.info(f"❌ Платеж отменен: {payment_id}")
+            
+#     except Exception as e:
+#         logging.error(f"❌ Ошибка обработки отмененного платежа: {e}")
+
+# async def handle_pending_payment(payment):
+#     """Обработка ожидающего платежа"""
+#     logging.info(f"⏳ Платеж ожидает подтверждения: {payment.id}")
+
+# async def send_telegram_notification(user_id: int, bots_count: int, amount: float):
+#     """Отправка уведомления в Telegram"""
+#     # Здесь нужно реализовать отправку через вашего бота
+#     logging.info(f"📢 Уведомление для {user_id}: оплачено {bots_count} ботов на сумму {amount} руб")

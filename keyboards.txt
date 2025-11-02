@@ -1,0 +1,194 @@
+# # keyboards.py
+# from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+# from database import get_user_bots_count, get_user_bots, get_bot_channels, get_user_bots_for_keyboard
+
+# async def get_main_user_keyboard(user_id: int):
+#     """Главная клавиатура пользователя"""
+#     # ДЕБАГ
+#     bots_count = await get_user_bots_count(user_id)
+#     print(f"DEBUG get_main_user_keyboard: User {user_id} has {bots_count} bots")
+    
+#     buttons = [
+#         [InlineKeyboardButton(text="🤖 Добавить бота", callback_data="add_bot")],
+#     ]
+    
+#     if bots_count > 0:
+#         print(f"DEBUG: Adding delete and configure buttons for user {user_id}")
+#         buttons.append([InlineKeyboardButton(text="❌ Удалить бота", callback_data="delete_bot")])
+#         buttons.append([InlineKeyboardButton(text="⚙️ Настройка ботов", callback_data="configure_bots")])
+    
+#     buttons.append([InlineKeyboardButton(text="💰 Купить ботов", callback_data="buy_bots")])
+    
+#     return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+# def get_check_subs_keyboard():
+#     """Клавиатура для проверки подписок"""
+#     return InlineKeyboardMarkup(
+#         inline_keyboard=[[
+#             InlineKeyboardButton(text="🔍 Проверить подписки", callback_data="check_subs")
+#         ]]
+#     )
+
+# def get_channel_subscribe_keyboard(not_subscribed_channels):
+#     """Клавиатура с кнопками подписки на каналы"""
+#     keyboard = []
+#     for channel_link, description in not_subscribed_channels:
+#         channel_clean = channel_link.lstrip('@')
+#         keyboard.append([
+#             InlineKeyboardButton(
+#                 text=f"📢 Подписаться на {description}",
+#                 url=f"https://t.me/{channel_clean}"
+#             )
+#         ])
+    
+#     keyboard.append([
+#         InlineKeyboardButton(text="🔍 Проверить снова", callback_data="check_subs")
+#     ])
+    
+#     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# async def get_bots_list_keyboard(user_id: int):
+#     """Клавиатура со списком ботов пользователя"""
+#     # Используем упрощенную версию для клавиатур
+#     bots = await get_user_bots_for_keyboard(user_id)
+    
+#     keyboard = []
+#     for bot_data in bots:
+#         bot_id, bot_username, bot_name, is_active = bot_data
+        
+#         # Получаем количество активных каналов для этого бота
+#         channels = await get_bot_channels(bot_id, user_id, only_active=True)
+#         active_channels_count = len(channels)
+        
+#         status = "🟢" if is_active else "🔴"
+#         button_text = f"{status} {bot_name} (@{bot_username}) - {active_channels_count} каналов"
+#         keyboard.append([
+#             InlineKeyboardButton(text=button_text, callback_data=f"bot_{bot_id}")
+#         ])
+    
+#     keyboard.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main")])
+#     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# async def get_delete_bots_list_keyboard(user_id: int):
+#     """Клавиатура для выбора бота при удалении"""
+#     # Используем упрощенную версию для клавиатур
+#     bots = await get_user_bots_for_keyboard(user_id)
+    
+#     keyboard = []
+#     for bot_data in bots:
+#         bot_id, bot_username, bot_name, is_active = bot_data
+        
+#         status = "🟢" if is_active else "🔴"
+#         button_text = f"{status} {bot_name} (@{bot_username})"
+#         keyboard.append([
+#             InlineKeyboardButton(text=button_text, callback_data=f"manage_bot_{bot_id}")
+#         ])
+    
+#     keyboard.append([InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main")])
+#     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# def get_bot_management_keyboard(bot_id: int):
+#     """Клавиатура управления ботом с новыми опциями"""
+#     return InlineKeyboardMarkup(inline_keyboard=[
+#         [
+#             InlineKeyboardButton(text="➕ Добавить канал", callback_data=f"add_channel_{bot_id}"),
+#             InlineKeyboardButton(text="📋 Список каналов", callback_data=f"list_channels_{bot_id}")
+#         ],
+#         [
+#             InlineKeyboardButton(text="📝 Сообщение", callback_data=f"edit_message_{bot_id}"),
+#             InlineKeyboardButton(text="🔘 Ссылка на файлы", callback_data=f"edit_button_{bot_id}")
+#         ],
+#         [
+#             InlineKeyboardButton(text="📎 Файл", callback_data=f"edit_file_{bot_id}")
+#         ],
+#         [
+#             InlineKeyboardButton(text="🔙 Назад к списку", callback_data="configure_bots")
+#         ]
+#     ])
+
+# def get_delete_bot_keyboard(bot_id: int):
+#     """Клавиатура удаления бота"""
+#     return InlineKeyboardMarkup(inline_keyboard=[
+#         [
+#             InlineKeyboardButton(text="⏸️ Остановить бота", callback_data=f"stop_bot_{bot_id}"),
+#             InlineKeyboardButton(text="▶️ Запустить бота", callback_data=f"start_bot_{bot_id}")
+#         ],
+#         [
+#             InlineKeyboardButton(text="🗑️ Удалить навсегда", callback_data=f"confirm_delete_{bot_id}")
+#         ],
+#         [
+#             InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main")
+#         ]
+#     ])
+
+# def get_buy_bots_keyboard():
+#     """Клавиатура покупки ботов"""
+#     return InlineKeyboardMarkup(inline_keyboard=[
+#         [
+#             InlineKeyboardButton(text="1 бот - 150₽", callback_data="buy_1")
+#         ],
+#         [
+#             InlineKeyboardButton(text="5 ботов - 500₽", callback_data="buy_5")
+#         ],
+#         [
+#             InlineKeyboardButton(text="10 ботов - 700₽", callback_data="buy_10")
+#         ],
+#         [
+#             InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main")
+#         ]
+#     ])
+
+# def get_back_keyboard():
+#     """Клавиатура с кнопкой назад"""
+#     return InlineKeyboardMarkup(inline_keyboard=[
+#         [InlineKeyboardButton(text="🔙 Назад", callback_data="back_to_main")]
+#     ])
+
+# def get_back_to_bot_keyboard(bot_id: int):
+#     """Клавиатура с кнопкой назад к настройкам бота"""
+#     return InlineKeyboardMarkup(inline_keyboard=[
+#         [InlineKeyboardButton(text="🔙 Назад к боту", callback_data=f"bot_{bot_id}")]
+#     ])
+
+# async def get_channels_list_keyboard(bot_id: int, user_id: int):
+#     """Клавиатура со списком каналов бота"""
+#     channels = await get_bot_channels(bot_id, user_id)
+    
+#     keyboard = []
+#     for channel_id, channel_link, description, is_active in channels:
+#         status = "🟢" if is_active else "🔴"
+#         button_text = f"{status} {description}"
+#         keyboard.append([
+#             InlineKeyboardButton(text=button_text, callback_data=f"channel_{channel_id}")
+#         ])
+    
+#     keyboard.append([InlineKeyboardButton(text="➕ Добавить канал", callback_data=f"add_channel_{bot_id}")])
+#     keyboard.append([InlineKeyboardButton(text="🔙 Назад к боту", callback_data=f"bot_{bot_id}")])
+    
+#     return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+# def get_channel_management_keyboard(channel_id: int, bot_id: int, is_active: bool):
+#     """Клавиатура управления каналом"""
+#     status_text = "⏸️ Сделать неактивным" if is_active else "▶️ Сделать активным"
+#     status_callback = f"deactivate_channel_{channel_id}" if is_active else f"activate_channel_{channel_id}"
+    
+#     return InlineKeyboardMarkup(inline_keyboard=[
+#         [
+#             InlineKeyboardButton(text="✏️ Изменить описание", callback_data=f"edit_channel_desc_{channel_id}")
+#         ],
+#         [
+#             InlineKeyboardButton(text=status_text, callback_data=status_callback)
+#         ],
+#         [
+#             InlineKeyboardButton(text="🗑️ Удалить канал", callback_data=f"delete_channel_{channel_id}")
+#         ],
+#         [
+#             InlineKeyboardButton(text="🔙 Назад к каналам", callback_data=f"list_channels_{bot_id}")
+#         ]
+#     ])
+
+# def get_back_to_channels_keyboard(bot_id: int):
+#     """Клавиатура с кнопкой назад к списку каналов"""
+#     return InlineKeyboardMarkup(inline_keyboard=[
+#         [InlineKeyboardButton(text="🔙 Назад к каналам", callback_data=f"list_channels_{bot_id}")]
+#     ])
