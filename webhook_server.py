@@ -121,14 +121,16 @@ class WebhookServer:
     
     async def health_check(self, request):
         """Проверка здоровья сервера"""
+        from payment_config import WEBHOOK_BASE_URL  # Импортируем из исправленного конфига
+        
         return web.json_response({
             "status": "healthy",
-            "service": "webhook_server",
+            "service": "webhook_server", 
             "host": WEBHOOK_HOST,
             "port": WEBHOOK_PORT,
             "endpoints": {
-                "yookassa_webhook": f"http://{WEBHOOK_HOST}:{WEBHOOK_PORT}/webhook/yookassa",
-                "health": f"http://{WEBHOOK_HOST}:{WEBHOOK_PORT}/health"
+                "yookassa_webhook": f"{WEBHOOK_BASE_URL}/webhook/yookassa",  # ✅ Используем BASE_URL
+                "health": f"{WEBHOOK_BASE_URL}/health"
             }
         })
     

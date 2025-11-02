@@ -12,7 +12,20 @@ YOOMONEY_SECRET_KEY = os.getenv('YOOMONEY_SECRET_KEY')
 # Вебхук настройки
 WEBHOOK_HOST = os.getenv('WEBHOOK_HOST', '89.223.125.102')
 WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '8443'))
-WEBHOOK_BASE_URL = f"http://{WEBHOOK_HOST}:{WEBHOOK_PORT}"
+
+# ✅ ПРАВИЛЬНО - определяем протокол автоматически
+if WEBHOOK_HOST.startswith('https://'):
+    # Если указан полный URL с https://
+    WEBHOOK_BASE_URL = f"{WEBHOOK_HOST}"
+    WEBHOOK_HOST_CLEAN = WEBHOOK_HOST.replace('https://', '')
+elif '://' in WEBHOOK_HOST:
+    # Если указан другой протокол
+    WEBHOOK_BASE_URL = f"{WEBHOOK_HOST}"
+    WEBHOOK_HOST_CLEAN = WEBHOOK_HOST.split('://')[1]
+else:
+    # Если указан только хост - используем HTTPS для продакшена
+    WEBHOOK_BASE_URL = f"https://{WEBHOOK_HOST}"
+    WEBHOOK_HOST_CLEAN = WEBHOOK_HOST
 
 # Тарифы для покупки ботов
 TARIFFS = {
