@@ -3,3 +3,11 @@ bot-restart   # Перезапуск бота (быстрая команда!)
 bot-logs      # Логи в реальном времени
 bot-stop      # Остановка
 bot-start     # Запуск
+
+на сервере 
+cd /opt/subscription_bot && \
+source venv/bin/activate && \
+git pull origin main && \
+pip install -r requirements.txt && \
+bot-restart && \
+bot-status

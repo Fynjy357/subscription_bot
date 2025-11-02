@@ -26,7 +26,8 @@ class YooKassaService:
 
             idempotence_key = str(uuid.uuid4())
             
-            payment = Payment.create({
+            # ДОБАВЛЯЕМ RECEIPT ДЛЯ ЧЕКА
+            payment_data = {
                 "amount": {
                     "value": f"{amount:.2f}",
                     "currency": "RUB"
@@ -37,11 +38,31 @@ class YooKassaService:
                 },
                 "capture": True,
                 "description": f"{description} (Payment #{payment_id})",
+                "receipt": {
+                    "customer": {
+                        "phone": "+79183567075"  # ФИКСИРОВАННЫЙ ТЕЛЕФОН
+                    },
+                    "items": [
+                        {
+                            "description": description,
+                            "quantity": "1.00",
+                            "amount": {
+                                "value": f"{amount:.2f}",
+                                "currency": "RUB"
+                            },
+                            "vat_code": 1,  # НДС 20%
+                            "payment_mode": "full_prepayment",
+                            "payment_subject": "service"
+                        }
+                    ]
+                },
                 "metadata": {
                     "payment_id": payment_id,
                     "user_id": user_id
                 }
-            }, idempotence_key)
+            }
+            
+            payment = Payment.create(payment_data, idempotence_key)
 
             return {
                 'success': True,
