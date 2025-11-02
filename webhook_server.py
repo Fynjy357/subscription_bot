@@ -2,6 +2,7 @@
 import logging
 import json
 import asyncio
+import ssl
 from aiohttp import web
 from database import get_payment_by_id, get_user_bot_limit, update_payment_status, update_user_bot_limit
 from config import WEBHOOK_HOST, WEBHOOK_PORT
@@ -146,19 +147,85 @@ class WebhookServer:
             "message": "Оплата не прошла. Попробуйте снова."
         })
     
+    def create_ssl_context(self):
+        """Создает SSL контекст для HTTPS"""
+        try:
+            # Пути к SSL сертификатам
+            ssl_cert = '/etc/ssl/certs/ssl-cert-snakeoil.pem'
+            ssl_key = '/etc/ssl/private/ssl-cert-snakeoil.key'
+            
+            # Проверяем существование сертификатов
+            import os
+            if not os.path.exists(ssl_cert) or not os.path.exists(ssl_key):
+                logging.warning("⚠️ SSL сертификаты не найдены. Создаем самоподписанные...")
+                self.generate_self_signed_cert()
+            
+            context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+            context.load_cert_chain(ssl_cert, ssl_key)
+            logging.info("✅ SSL контекст создан")
+            return context
+            
+        except Exception as e:
+            logging.error(f"❌ Ошибка создания SSL контекста: {e}")
+            logging.info("🔄 Запуск без SSL...")
+            return None
+    
+    def generate_self_signed_cert(self):
+        """Генерирует самоподписанные SSL сертификаты"""
+        try:
+            import subprocess
+            import os
+            
+            # Создаем директории если нет
+            os.makedirs('/etc/ssl/certs', exist_ok=True)
+            os.makedirs('/etc/ssl/private', exist_ok=True)
+            
+            # Генерируем самоподписанный сертификат
+            cmd = [
+                'openssl', 'req', '-new', '-newkey', 'rsa:2048', '-days', '365', '-nodes', '-x509',
+                '-keyout', '/etc/ssl/private/ssl-cert-snakeoil.key',
+                '-out', '/etc/ssl/certs/ssl-cert-snakeoil.pem',
+                '-subj', '/C=US/ST=State/L=City/O=Organization/CN=89.223.125.102'
+            ]
+            
+            subprocess.run(cmd, check=True, capture_output=True)
+            
+            # Устанавливаем правильные права
+            subprocess.run(['chmod', '644', '/etc/ssl/certs/ssl-cert-snakeoil.pem'], check=True)
+            subprocess.run(['chmod', '600', '/etc/ssl/private/ssl-cert-snakeoil.key'], check=True)
+            
+            logging.info("✅ Самоподписанные SSL сертификаты созданы")
+            
+        except Exception as e:
+            logging.error(f"❌ Ошибка генерации SSL сертификатов: {e}")
+            raise
+    
     async def start(self):
-        """Запускает вебхук сервер"""
+        """Запускает вебхук сервер с HTTPS"""
         self.setup_routes()
         
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
         
-        self.site = web.TCPSite(self.runner, '0.0.0.0', WEBHOOK_PORT)
-        await self.site.start()
+        # Создаем SSL контекст
+        ssl_context = self.create_ssl_context()
         
-        logging.info(f"🚀 Webhook сервер запущен на {WEBHOOK_HOST}:{WEBHOOK_PORT}")
-        logging.info(f"🌐 YooKassa webhook: http://{WEBHOOK_HOST}:{WEBHOOK_PORT}/webhook/yookassa")
-        logging.info(f"❤️ Health check: http://{WEBHOOK_HOST}:{WEBHOOK_PORT}/health")
+        if ssl_context:
+            # Запускаем с HTTPS
+            self.site = web.TCPSite(self.runner, '0.0.0.0', WEBHOOK_PORT, ssl_context=ssl_context)
+            await self.site.start()
+            
+            logging.info(f"🚀 Webhook сервер запущен на https://{WEBHOOK_HOST}:{WEBHOOK_PORT}")
+            logging.info(f"🌐 YooKassa webhook: https://{WEBHOOK_HOST}:{WEBHOOK_PORT}/webhook/yookassa")
+            logging.info(f"❤️ Health check: https://{WEBHOOK_HOST}:{WEBHOOK_PORT}/health")
+        else:
+            # Запускаем без HTTPS (как fallback)
+            self.site = web.TCPSite(self.runner, '0.0.0.0', WEBHOOK_PORT)
+            await self.site.start()
+            
+            logging.warning(f"⚠️ Webhook сервер запущен на HTTP: http://{WEBHOOK_HOST}:{WEBHOOK_PORT}")
+            logging.warning(f"⚠️ YooKassa webhook: http://{WEBHOOK_HOST}:{WEBHOOK_PORT}/webhook/yookassa")
+            logging.warning(f"⚠️ Health check: http://{WEBHOOK_HOST}:{WEBHOOK_PORT}/health")
         
         return self.runner
     
