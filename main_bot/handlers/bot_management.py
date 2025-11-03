@@ -233,7 +233,7 @@ async def setup_bot_management_handlers(router: Router):
             return
         
         # Распаковываем все 10 значений (включая image_file_id)
-        bot_id, bot_token, bot_username, bot_name, is_active, bot_message, button_url, file_id, file_type, image_file_id = bot
+        bot_id, bot_token, bot_username, bot_name, is_active, bot_message, button_url, file_id, file_type, image_filename, material_sent_at = bot
         
         status_text = "🟢 Активен" if is_active else "🔴 Остановлен"
         
@@ -259,7 +259,7 @@ async def setup_bot_management_handlers(router: Router):
         
         # Запускаем бота
         # Распаковываем все 10 значений (включая image_file_id)
-        bot_id, bot_token, bot_username, bot_name, is_active, bot_message, button_url, file_id, file_type, image_file_id = bot
+        bot_id, bot_token, bot_username, bot_name, is_active, bot_message, button_url, file_id, file_type, image_filename, material_sent_at = bot
         asyncio.create_task(start_worker_bot(bot_token, bot_id))
         
         await callback.answer("✅ Бот запущен", show_alert=True)
@@ -294,7 +294,7 @@ async def setup_bot_management_handlers(router: Router):
             return
         
         # Распаковываем все 10 значений (включая image_file_id)
-        bot_id, bot_token, bot_username, bot_name, is_active, bot_message, button_url, file_id, file_type, image_file_id = bot
+        bot_id, bot_token, bot_username, bot_name, is_active, bot_message, button_url, file_id, file_type, image_filename, material_sent_at = bot
         
         # Останавливаем бота перед удалением
         await stop_worker_bot(bot_id)

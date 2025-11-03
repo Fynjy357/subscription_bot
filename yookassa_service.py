@@ -34,7 +34,7 @@ class YooKassaService:
                 },
                 "confirmation": {
                     "type": "redirect",
-                    "return_url": f"https://t.me/your_bot?start=payment_{payment_id}"
+                    "return_url": f"https://t.me/sub_group_bot?start=payment_{payment_id}"
                 },
                 "capture": True,
                 "description": f"{description} (Payment #{payment_id})",
@@ -50,7 +50,7 @@ class YooKassaService:
                                 "value": f"{amount:.2f}",
                                 "currency": "RUB"
                             },
-                            "vat_code": 1,  # НДС 20%
+                            "vat_code": 1,  # без НДС 
                             "payment_mode": "full_prepayment",
                             "payment_subject": "service"
                         }
